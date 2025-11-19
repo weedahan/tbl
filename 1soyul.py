@@ -1,0 +1,111 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+FILE_PATH = "대학교 성적 리스트 100명.xlsx"
+
+df = pd.read_excel(FILE_PATH)
+
+COL_NUM = "학번"
+COL_NAME = "이름"
+COL_SCORE = "점수"
+COL_GRADE = "학점"
+
+scores = df[COL_SCORE].to_numpy()
+grades = df[COL_GRADE].to_numpy()
+
+grade_to_point = {
+    "A+": 4.5, "A": 4.0,
+    "B+": 3.5, "B": 3.0,
+    "C+": 2.5, "C": 2.0,
+    "D+": 1.5, "D": 1.0,
+    "F": 0.0
+}
+
+points = np.array([grade_to_point.get(g, 0.0) for g in grades])
+
+mean_score = scores.mean()
+mean_point = points.mean()
+
+mode = input("Search student by (number/name): ").strip()
+
+if mode == "number":
+    no = int(input("Enter student number: "))
+    selected_row = df[df[COL_NUM] == no]
+elif mode == "name":
+    name = input("Enter student name: ")
+    selected_row = df[df[COL_NAME] == name]
+else:
+    print("Invalid option.")
+    exit()
+
+if selected_row.empty:
+    print("Student not found.")
+    exit()
+
+selected_row = selected_row.iloc[0]
+
+student_no = selected_row[COL_NUM]
+student_name = selected_row[COL_NAME]
+student_score = float(selected_row[COL_SCORE])
+student_grade = str(selected_row[COL_GRADE])
+
+# =======================
+#   SCORE DISTRIBUTION
+# =======================
+mean = scores.mean()
+std = scores.std(ddof=0)
+
+plt.figure(figsize=(10, 5))
+
+plt.figtext(0.02, 0.97, "Your Score vs Overall Score Distribution", fontsize=13, fontweight="bold")
+plt.figtext(
+    0.02, 0.93,
+    f"Overall Average Score: {mean_score:.1f}    |    Your Score: {student_score:.1f}",
+    fontsize=11
+)
+
+count, bins, _ = plt.hist(scores, bins=10, alpha=0.6)
+
+x = np.linspace(scores.min(), scores.max(), 200)
+pdf = (1/(std*np.sqrt(2*np.pi))) * np.exp(-0.5*((x-mean)/std)**2)
+bin_width = bins[1] - bins[0]
+pdf_scaled = pdf * len(scores) * bin_width
+plt.plot(x, pdf_scaled)
+
+plt.axvline(mean_score, linestyle="dashed", linewidth=2, label="Average")
+plt.axvline(student_score, linewidth=2, label="You")
+
+plt.xlabel("Score")
+plt.ylabel("Students")
+plt.legend(loc="upper right")
+
+plt.tight_layout(rect=[0, 0, 1, 0.86])
+plt.show()
+
+# =======================
+#   GRADE DISTRIBUTION
+# =======================
+unique_grades = ["A+","A","B+","B","C+","C","D+","D","F"]
+counts = [np.sum(grades == g) for g in unique_grades]
+
+plt.figure(figsize=(8, 4))
+
+plt.figtext(0.02, 0.97, "Your Position in Grade Distribution", fontsize=13, fontweight="bold")
+plt.figtext(
+    0.02, 0.93,
+    f"Overall Average GPA: {mean_point:.2f}    |    Your Grade: {student_grade}",
+    fontsize=11
+)
+
+plt.bar(unique_grades, counts)
+
+if student_grade in unique_grades:
+    idx = unique_grades.index(student_grade)
+    plt.text(idx, counts[idx] + 0.3, student_name, ha="center")
+
+plt.xlabel("Grade")
+plt.ylabel("Count")
+
+plt.tight_layout(rect=[0, 0, 1, 0.86])
+plt.show()

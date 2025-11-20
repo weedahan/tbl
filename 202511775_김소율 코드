@@ -1,115 +1,179 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import platform
 
-# 기본 폰트를 영어 지원 폰트로 설정 (한글 깨짐 이슈)
-plt.rcParams['font.family'] = 'DejaVu Sans'
+# -------------------------
+# 1) 그래프 한글 깨짐 방지
+# -------------------------
+def set_font():
+    sys = platform.system()
+    if sys == "Windows":
+        plt.rc("font", family="Malgun Gothic")
+    elif sys == "Darwin":
+        plt.rc("font", family="AppleGothic")
+    else:
+        plt.rc("font", family="DejaVu Sans")
 
-FILE_PATH = "대학교 성적 리스트 100명.xlsx"
+    plt.rcParams["axes.unicode_minus"] = False
 
-df = pd.read_excel(FILE_PATH)
 
-COL_NUM = "학번"
-COL_NAME = "이름"
-COL_SCORE = "점수"
-COL_GRADE = "학점"
+# -------------------------
+# 2) 학점 → 숫자로 바꾸기
+# -------------------------
+def grade_to_point(grade_list):
+    grade_table = {
+        "A+":4.5, "A":4.0, "B+":3.5, "B":3.0,
+        "C+":2.5, "C":2.0, "D+":1.5, "D":1.0, "F":0.0
+    }
 
-scores = df[COL_SCORE].to_numpy()
-grades = df[COL_GRADE].to_numpy()
+    point_arr = []
+    for g in grade_list:
+        point_arr.append(grade_table.get(g, 0.0))
+    return np.array(point_arr)
 
-grade_to_point = {
-    "A+": 4.5, "A": 4.0,
-    "B+": 3.5, "B": 3.0,
-    "C+": 2.5, "C": 2.0,
-    "D+": 1.5, "D": 1.0,
-    "F": 0.0
-}
 
-points = np.array([grade_to_point.get(g, 0.0) for g in grades])
+# -------------------------
+# 3) 학번 또는 이름으로 학생 찾기
+# -------------------------
+def search_student(data, text):
+    # 숫자이면 학번으로, 아니면 이름으로
+    if text.isdigit():
+        result = data[data["학번"] == int(text)]
+    else:
+        result = data[data["이름"] == text]
 
-mean_score = scores.mean()
-mean_point = points.mean()
+    if len(result) == 0:
+        return None
+    return result.iloc[0]
 
-mode = input("Search student by (number/name): ").strip()
 
-if mode == "number":
-    no = int(input("Enter student number: "))
-    selected_row = df[df[COL_NUM] == no]
-elif mode == "name":
-    name = input("Enter student name: ")
-    selected_row = df[df[COL_NAME] == name]
-else:
-    print("Invalid option.")
-    exit()
+# -------------------------
+# 4) 정규분포 중심 점수 그래프 (최종 버전)
+# -------------------------
+def show_score_graph(score_list, my_score, my_name):
 
-if selected_row.empty:
-    print("Student not found.")
-    exit()
+    # 평균, 표준편차 계산
+    avg = np.mean(score_list)
+    std = np.std(score_list)
 
-selected_row = selected_row.iloc[0]
+    plt.figure(figsize=(10, 5))
+    plt.title("정규분포에서 내 점수 위치 보기", fontsize=15)
 
-student_no = selected_row[COL_NUM]
-student_name = selected_row[COL_NAME]
-student_score = float(selected_row[COL_SCORE])
-student_grade = str(selected_row[COL_GRADE])
+    # 평균과 내 점수 표시 (그래프 위쪽에 글씨)
+    plt.figtext(0.02, 0.93,
+                f"평균 점수: {avg:.1f}  |  내 점수: {my_score:.1f}",
+                fontsize=11)
 
-# =======================
-#   SCORE DISTRIBUTION
-# =======================
-mean = scores.mean()
-std = scores.std(ddof=0)
+    # 정규분포 곡선 그리기
+    x = np.linspace(min(score_list), max(score_list), 300)
+    pdf = (1/(std*np.sqrt(2*np.pi))) * np.exp(-0.5*((x-avg)/std)**2)
+    plt.plot(x, pdf, color='orange', linewidth=2, label="정규분포")
 
-plt.figure(figsize=(10, 5))
+    # 평균 위치 표시 (파란 점선)
+    plt.axvline(avg, color='blue', linestyle='--', linewidth=2)
+    plt.text(avg, max(pdf)*1.05, "AVG", color='blue', ha='center')
 
-plt.figtext(0.02, 0.97, "Your Score vs Overall Score Distribution", fontsize=13, fontweight="bold")
-plt.figtext(
-    0.02, 0.93,
-    f"Overall Average Score: {mean_score:.1f}    |    Your Score: {student_score:.1f}",
-    fontsize=11
-)
+    # 내 점수 표시 (빨간 실선)
+    plt.axvline(my_score, color='red', linewidth=2)
+    plt.text(my_score, max(pdf)*1.05, "YOU", color='red', ha='center')
 
-count, bins, _ = plt.hist(scores, bins=10, alpha=0.6)
+    # 내 점수에 점 하나 찍기
+    plt.scatter([my_score], [0], color='red', s=40)
 
-x = np.linspace(scores.min(), scores.max(), 200)
-pdf = (1/(std*np.sqrt(2*np.pi))) * np.exp(-0.5*((x-mean)/std)**2)
-bin_width = bins[1] - bins[0]
-pdf_scaled = pdf * len(scores) * bin_width
-plt.plot(x, pdf_scaled)
+    plt.xlabel("점수")
+    plt.ylabel("확률밀도")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
-plt.axvline(mean_score, linestyle="dashed", linewidth=2, label="Average")
-plt.axvline(student_score, linewidth=2, label="You")
-
-plt.xlabel("Score")
-plt.ylabel("Students")
-plt.legend(loc="upper right")
-
-plt.tight_layout(rect=[0, 0, 1, 0.86])
-plt.show()
-
-# =======================
-#   GRADE DISTRIBUTION
-# =======================
-unique_grades = ["A+","A","B+","B","C+","C","D+","D","F"]
-counts = [np.sum(grades == g) for g in unique_grades]
-
-plt.figure(figsize=(8, 4))
-
-plt.figtext(0.02, 0.97, "Your Position in Grade Distribution", fontsize=13, fontweight="bold")
-plt.figtext(
-    0.02, 0.93,
-    f"Overall Average GPA: {mean_point:.2f}    |    Your Grade: {student_grade}",
-    fontsize=11
-)
-
-plt.bar(unique_grades, counts)
-
-if student_grade in unique_grades:
-    idx = unique_grades.index(student_grade)
     
-    plt.text(idx, counts[idx] + 0.3, "YOU", ha="center", fontsize=12, color="black")
+# -------------------------
+# 5) 학점 그래프
+# -------------------------
+def show_grade_graph(grade_list, my_grade):
 
-plt.xlabel("Grade")
-plt.ylabel("Count")
+    grade_order = ["A+","A","B+","B","C+","C","D+","D","F"]
+    count_list = []
 
-plt.tight_layout(rect=[0, 0, 1, 0.86])
-plt.show()
+    for g in grade_order:
+        count_list.append(np.sum(grade_list == g))
+
+    avg_gpa = np.mean(grade_to_point(grade_list))
+
+    plt.figure(figsize=(8, 4))
+    plt.title("학점 분포 안에서 내 위치", fontsize=14)
+
+    plt.figtext(0.02, 0.93,
+                f"평균 GPA: {avg_gpa:.2f}  |  내 학점: {my_grade}",
+                fontsize=10)
+
+    bars = plt.bar(grade_order, count_list)
+
+    # 내 학점 위치에 YOU 표시
+    if my_grade in grade_order:
+        idx = grade_order.index(my_grade)
+        plt.text(idx, count_list[idx] + 0.3, "YOU",
+                 ha='center', fontsize=11, color="black")
+
+    plt.xlabel("학점")
+    plt.ylabel("학생 수")
+    plt.tight_layout()
+    plt.show()
+
+
+# -------------------------
+# 6) 전공별 상위 10%
+# -------------------------
+def top_10_percent(data):
+    if "전공" not in data.columns:
+        print("전공 정보가 없어 상위 10%는 스킵합니다.")
+        return
+
+    print("\n전공별 상위 10% 명단")
+    majors = data.groupby("전공")
+
+    for major, group in majors:
+        top_score = group["점수"].quantile(0.9)
+        top_people = group[group["점수"] >= top_score]
+
+        print(f"\n▶ {major}")
+        for _, row in top_people.iterrows():
+            print(f"- {row['이름']} (점수 {row['점수']})")
+
+
+# -------------------------
+# 7) 메인 흐름
+# -------------------------
+def main():
+    set_font()
+
+    file = "대학교 성적 리스트 100명.xlsx"
+    df = pd.read_excel(file)
+
+    if "점수" not in df.columns or "학점" not in df.columns:
+        print("점수 또는 학점 컬럼이 없어 실행할 수 없습니다.")
+        return
+
+    scores = df["점수"].to_numpy()
+    grades = df["학점"].to_numpy()
+
+    user = input("\n학번 또는 이름 입력: ")
+    student = search_student(df, user)
+
+    if student is None:
+        print("학생을 찾지 못했습니다.")
+        return
+
+    my_score = float(student["점수"])
+    my_grade = student["학점"]
+    my_name = student["이름"]
+
+    show_score_graph(scores, my_score, my_name)
+    show_grade_graph(grades, my_grade)
+    top_10_percent(df)
+
+
+if __name__ == "__main__":
+    main()
+   

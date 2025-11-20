@@ -2,6 +2,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+# 기본 폰트를 영어 지원 폰트로 설정 (한글 깨짐 이슈)
+plt.rcParams['font.family'] = 'DejaVu Sans'
+
 FILE_PATH = "대학교 성적 리스트 100명.xlsx"
 
 df = pd.read_excel(FILE_PATH)
@@ -102,7 +105,8 @@ plt.bar(unique_grades, counts)
 
 if student_grade in unique_grades:
     idx = unique_grades.index(student_grade)
-    plt.text(idx, counts[idx] + 0.3, student_name, ha="center")
+    
+    plt.text(idx, counts[idx] + 0.3, "YOU", ha="center", fontsize=12, color="black")
 
 plt.xlabel("Grade")
 plt.ylabel("Count")

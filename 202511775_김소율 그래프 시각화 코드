@@ -127,7 +127,7 @@ def show_grade_graph(grade_list, my_grade):
 # -------------------------
 def top_10_percent(data):
     if "전공" not in data.columns:
-        print("전공 정보가 없어 상위 10%는 스킵합니다.")
+        print("점수 정보가 없어 상위 10%는 스킵합니다.")
         return
 
     print("\n전공별 상위 10% 명단")
@@ -177,3 +177,4 @@ def main():
 if __name__ == "__main__":
     main()
    
+

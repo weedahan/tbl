@@ -67,7 +67,9 @@ def plot_major_avg_vs_top10(data):
 
 if __name__ == "__main__":
     is_loaded = True
-    excel_path = '대학교 성적 리스트(500명).xlsx'
+    excel_path = '.py 파일과 엑셀파일을 같은 파일에 포함시키고 파일이름으로 변경해주세요.xlsx'
+    # EX) excel_path = '대학생 성적 리스트 100명.xlsx'
     data = load_excel_file(is_loaded, excel_path)
     plot_score_bar(data)
     plot_major_avg_vs_top10(data)
+
